@@ -1,64 +1,156 @@
-/*
-// seletor de perfis
-var perfil = document.querySelectorAll("li.grid")[i]
+console.log("CONTENT CARREGADO NA PÁGINA ✅");
 
-    // seletor de perfis + nome
-    perfil.querySelectorAll("a")[1].innerText
+let dados = [];
+let i = 0;
+let rodando = false;
 
-    // seletor de perfis + title
-    perfil.querySelectorAll("a")[1].parentElement.parentNode.children[2].innerText
+let palavrasChave = [];
+let salvarApenasComKeyword = false;
 
-    // seletor de perfis + link
-    perfil.querySelectorAll("a")[1].href
+let totalMatches = 0;
+let limiteMatches = 1;
 
-    // seletor de perfis + barra de rolagem automática
-    perfil.scrollIntoView()
+let empresaGlobal = "";
 
-// Clicar no botão para exibir mais resultados
-const buttons = Array.from(document.querySelectorAll('button'));
+chrome.runtime.onMessage.addListener((msg) => {
 
-const target = buttons.find(btn => 
-  btn.querySelector('span')?.textContent.includes('Exibir mais resultados')
-);
+    if (msg.acao === "iniciar") {
 
-target.click()
+        rodando = true;
+        i = 0;
+        dados = [];
+        totalMatches = 0;
 
-*/
+        palavrasChave = (msg.palavras || [])
+            .map(p => p.toLowerCase().trim())
+            .filter(Boolean);
 
+        salvarApenasComKeyword = msg.filtro === "apenas_keyword";
+        limiteMatches = msg.limite || 1;
 
-var i = 0;
-Start();
+        empresaGlobal = document.querySelectorAll("h1")[0]?.innerText || "Empresa não encontrada";
+
+        console.log("EMPRESA:", empresaGlobal);
+        console.log("PALAVRAS:", palavrasChave);
+        console.log("LIMITE:", limiteMatches);
+
+        setTimeout(Start, 2000);
+    }
+
+    if (msg.acao === "parar") {
+
+        rodando = false;
+        baixarTXT();
+    }
+
+});
+
 
 function Start(){
-  // seletor de perfis
-  let profile = document.querySelectorAll("li.grid")
 
-  // seletor de perfis + nome
-  let name = profile[i].querySelectorAll("a")[1].innerText
+    if (!rodando) return;
 
-  // seletor de perfis + title
-  let title = profile[i].querySelectorAll("a")[1].parentElement.parentNode.children[2].innerText
+    let profile = document.querySelectorAll("li.grid");
 
-  // seletor de perfis + link
-  let link = profile[i].querySelectorAll("a")[1].href
+    if (!profile[i]) {
 
-  // seletor de perfis + barra de rolagem automática
-  let scroll = profile[i].scrollIntoView()
+        console.log("Fim da lista");
 
-  // Clicar no botão para exibir mais resultados
-  const buttons = Array.from(document.querySelectorAll('button'));
+        rodando = false;
+        baixarTXT();
+        return;
+    }
 
-  const target = buttons.find(btn => 
-    btn.querySelector('span')?.textContent.includes('Exibir mais resultados')
-  );
+    let name = profile[i].querySelectorAll("a")[1]?.innerText || "";
+    let title = profile[i].querySelectorAll("a")[1]?.parentElement?.parentNode?.children[2]?.innerText || "";
+    let link = profile[i].querySelectorAll("a")[1]?.href || "";
 
-  console.log(name+" | "+title+" | "+link)
-  if (i < profile.length - 4) { 
-    i++; 
-    setTimeout(Start, 500); 
-  }else{
-    target.click()
-    i++; 
-    setTimeout(Start, 8000); 
-  };
+    let conectar = profile[i].querySelectorAll('button')[0]?.innerText || "";
+    let isConexao = conectar.trim().toLowerCase() !== "conectar";
+
+    profile[i].scrollIntoView();
+
+    const texto = (name + " " + title).toLowerCase();
+
+    let palavrasEncontradas = palavrasChave.filter(p =>
+        texto.includes(p)
+    );
+
+    palavrasEncontradas = [...new Set(palavrasEncontradas)];
+
+    if (palavrasEncontradas.length > 0) {
+        totalMatches++;
+        console.log("MATCH:", totalMatches, "/", limiteMatches);
+    }
+
+    const deveSalvar =
+        !salvarApenasComKeyword || palavrasEncontradas.length > 0;
+
+    if (deveSalvar) {
+        dados.push({
+            nome: name,
+            titulo: title,
+            empresa: empresaGlobal,
+            palavras: palavrasEncontradas.join(", "),
+            conexao: isConexao ? "SIM" : "",
+            link: link
+        });
+    }
+
+    if (totalMatches >= limiteMatches) {
+
+        console.log("LIMITE ATINGIDO ✅");
+
+        rodando = false;
+        baixarTXT();
+        return;
+    }
+
+    const buttons = Array.from(document.querySelectorAll('button'));
+
+    const target = buttons.find(btn =>
+        btn.querySelector('span')?.textContent.includes('Exibir mais resultados')
+    );
+
+    if (i < profile.length - 4) {
+
+        i++;
+        setTimeout(Start, 500);
+
+    } else {
+
+        if (target) target.click();
+
+        i++;
+        setTimeout(Start, 5000);
+    }
+}
+
+
+// ==========================
+// DOWNLOAD
+// ==========================
+
+function baixarTXT() {
+
+    let conteudo = "\uFEFFNome\tTítulo\tEmpresa\tPalavras-chave\tConexão\tLink\n";
+
+    dados.forEach(d => {
+        conteudo += `${d.nome}\t${d.titulo}\t${d.empresa}\t${d.palavras}\t${d.conexao}\t${d.link}\n`;
+    });
+
+    const blob = new Blob([conteudo], { type: "text/plain" });
+
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "linkedin_dados.txt";
+
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+
+    console.log("TXT GERADO ✅");
+
+    // 🔴 ESSENCIAL
+    chrome.storage.local.set({ executando: false });
 }

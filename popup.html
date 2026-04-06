@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>LinkedIn Scraper</title>
+
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        width: 250px;
+        padding: 10px;
+    }
+
+    button {
+        width: 100%;
+        height: 35px;
+        margin-bottom: 10px;
+        cursor: pointer;
+    }
+
+    input[type="number"],
+    input[type="text"] {
+        width: 100%;
+        margin-bottom: 10px;
+        padding: 5px;
+        box-sizing: border-box;
+    }
+
+    label {
+        display: block;
+        margin-bottom: 5px;
+    }
+
+    .disabled {
+        opacity: 0.5;
+        pointer-events: none;
+    }
+</style>
+</head>
+
+<body>
+
+<button id="toggle">Executar</button>
+
+<label>Palavras-chave para filtrar do título:</label>
+<input type="text" id="palavras">
+
+<br>
+<br>
+<label>
+    <input type="radio" name="salvar" value="todos" checked>
+    Salvar todos os perfis
+</label>
+
+<label>
+    <input type="radio" name="salvar" value="apenas_keyword">
+    Salvar apenas perfis com palavra-chave
+</label>
+
+<br>
+
+<label>Salvar quantos perfis pela palavra-chave:</label>
+<input type="number" id="quantidade" value="1" min="1">
+
+<label>Link da planilha com as empresas:</label>
+<input type="text" id="planilha">
+
+<label>Quantidade de abas simultâneas:</label>
+<input type="number" id="abas" value="5" min="1">
+
+<script src="popup.js"></script>
+
+</body>
+</html>
