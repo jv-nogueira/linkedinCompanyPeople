@@ -66,7 +66,7 @@ function Start(){
     let link = profile[i].querySelectorAll("a")[1]?.href || "";
 
     let conectar = profile[i].querySelectorAll('button')[0]?.innerText || "";
-    let isConexao = conectar.trim().toLowerCase() !== "conectar";
+    let isConexao = conectar.trim().toLowerCase() !== "conectar" && conectar.trim().toLowerCase() !== "seguir";
 
     profile[i].scrollIntoView();
 

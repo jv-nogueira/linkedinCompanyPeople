@@ -88,9 +88,13 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (changes.executando) {
             executando = changes.executando.newValue;
             atualizarUI();
+
+            // 🔴 FECHAR POPUP AUTOMATICAMENTE
+            if (executando === false) {
+                window.close();
+            }
         }
 
-        // 🔴 mantém inputs sincronizados também
         if (changes.palavras) palavrasInput.value = changes.palavras.newValue || "";
         if (changes.limite) quantidadeInput.value = changes.limite.newValue || 1;
 
