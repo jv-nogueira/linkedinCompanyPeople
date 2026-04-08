@@ -12,6 +12,9 @@ let limiteMatches = 1;
 
 let empresaGlobal = "";
 
+// ✅ NOVO
+let ignorarConectados = false;
+
 chrome.runtime.onMessage.addListener((msg) => {
 
     if (msg.acao === "iniciar") {
@@ -28,11 +31,22 @@ chrome.runtime.onMessage.addListener((msg) => {
         salvarApenasComKeyword = msg.filtro === "apenas_keyword";
         limiteMatches = msg.limite || 1;
 
+        // ✅ NOVO
+        ignorarConectados = msg.ignorarConectados || false;
+
         empresaGlobal = document.querySelectorAll("h1")[0]?.innerText || "Empresa não encontrada";
 
         console.log("EMPRESA:", empresaGlobal);
         console.log("PALAVRAS:", palavrasChave);
         console.log("LIMITE:", limiteMatches);
+        console.log("IGNORAR CONECTADOS:", ignorarConectados);
+
+        chrome.storage.local.set({
+            progresso: {
+                atual: 0,
+                total: limiteMatches
+            }
+        });
 
         setTimeout(Start, 2000);
     }
@@ -41,6 +55,13 @@ chrome.runtime.onMessage.addListener((msg) => {
 
         rodando = false;
         baixarTXT();
+
+        chrome.storage.local.set({
+            progresso: {
+                atual: 0,
+                total: 0
+            }
+        });
     }
 
 });
@@ -66,7 +87,10 @@ function Start(){
     let link = profile[i].querySelectorAll("a")[1]?.href || "";
 
     let conectar = profile[i].querySelectorAll('button')[0]?.innerText || "";
-    let isConexao = conectar.trim().toLowerCase() !== "conectar" && conectar.trim().toLowerCase() !== "seguir";
+
+    let isConexao =
+        conectar.trim().toLowerCase() !== "conectar" &&
+        conectar.trim().toLowerCase() !== "seguir";
 
     profile[i].scrollIntoView();
 
@@ -78,15 +102,35 @@ function Start(){
 
     palavrasEncontradas = [...new Set(palavrasEncontradas)];
 
-    if (palavrasEncontradas.length > 0) {
-        totalMatches++;
-        console.log("MATCH:", totalMatches, "/", limiteMatches);
-    }
+    // ==========================
+    // FILTROS
+    // ==========================
 
-    const deveSalvar =
+    const passouKeyword =
         !salvarApenasComKeyword || palavrasEncontradas.length > 0;
 
+    const passouConexao =
+        !ignorarConectados || !isConexao;
+
+    const deveSalvar = passouKeyword && passouConexao;
+
+    // ==========================
+    // SOMENTE AQUI conta e salva
+    // ==========================
+
     if (deveSalvar) {
+
+        totalMatches++;
+
+        console.log("SALVO:", totalMatches, "/", limiteMatches);
+
+        chrome.storage.local.set({
+            progresso: {
+                atual: totalMatches,
+                total: limiteMatches
+            }
+        });
+
         dados.push({
             nome: name,
             titulo: title,
@@ -97,6 +141,10 @@ function Start(){
         });
     }
 
+    // ==========================
+    // LIMITE
+    // ==========================
+
     if (totalMatches >= limiteMatches) {
 
         console.log("LIMITE ATINGIDO ✅");
@@ -105,6 +153,10 @@ function Start(){
         baixarTXT();
         return;
     }
+
+    // ==========================
+    // PAGINAÇÃO
+    // ==========================
 
     const buttons = Array.from(document.querySelectorAll('button'));
 
@@ -122,7 +174,7 @@ function Start(){
         if (target) target.click();
 
         i++;
-        setTimeout(Start, 5000);
+        setTimeout(Start, 3000);
     }
 }
 
@@ -151,6 +203,5 @@ function baixarTXT() {
 
     console.log("TXT GERADO ✅");
 
-    // 🔴 ESSENCIAL
     chrome.storage.local.set({ executando: false });
 }

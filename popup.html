@@ -35,6 +35,11 @@
         opacity: 0.5;
         pointer-events: none;
     }
+
+    #previewQuantidade {
+        font-size: 14px;
+        margin-bottom: 10px;
+    }
 </style>
 </head>
 
@@ -47,20 +52,34 @@
 
 <br>
 <br>
+
+<label>Regras para baixar os perfis</label>
 <label>
     <input type="radio" name="salvar" value="todos" checked>
-    Salvar todos os perfis
+    Nenhuma
 </label>
 
 <label>
     <input type="radio" name="salvar" value="apenas_keyword">
-    Salvar apenas perfis com palavra-chave
+    Apenas perfis com palavra-chave
+</label>
+
+<br>
+
+<label>
+    <input type="checkbox" id="conectados">
+    Ignorar perfis já conectados
 </label>
 
 <br>
 
 <label>Salvar quantos perfis pela palavra-chave:</label>
 <input type="number" id="quantidade" value="1" min="1">
+
+<!-- 🔴 NOVO -->
+<div id="progresso">Contagem: 0/0</div>
+
+<br>
 
 <label>Link da planilha com as empresas:</label>
 <input type="text" id="planilha">

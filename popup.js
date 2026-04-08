@@ -3,31 +3,99 @@ document.addEventListener("DOMContentLoaded", async () => {
     const botao = document.getElementById("toggle");
     const palavrasInput = document.getElementById("palavras");
     const quantidadeInput = document.getElementById("quantidade");
+    const progressoDiv = document.getElementById("progresso");
     const radios = document.querySelectorAll("input[name='salvar']");
+    const conectadosCheckbox = document.getElementById("conectados");
 
-    // 🔴 CARREGA ESTADO COMPLETO
     const data = await chrome.storage.local.get([
         "executando",
         "palavras",
         "filtro",
-        "limite"
+        "limite",
+        "progresso",
+        "conectados"
     ]);
 
     let executando = data.executando || false;
 
-    // 🔴 RESTAURA VALORES
+    // ==========================
+    // RESTORE STATE
+    // ==========================
+
     palavrasInput.value = data.palavras || "";
     quantidadeInput.value = data.limite || 1;
+    conectadosCheckbox.checked = data.conectados || false;
 
     radios.forEach(r => {
         if (r.value === data.filtro) r.checked = true;
     });
 
-    atualizarUI();
+    // 🔴 usa SOMENTE storage como fonte
+    atualizarProgresso(
+        data.progresso || { atual: 0, total: quantidadeInput.value }
+    );
 
     // ==========================
-    // CLICK BOTÃO
+    // AUTO SAVE
     // ==========================
+
+    palavrasInput.addEventListener("input", async () => {
+        await chrome.storage.local.set({
+            palavras: palavrasInput.value
+        });
+    });
+
+    quantidadeInput.addEventListener("input", async () => {
+
+        const limite = parseInt(quantidadeInput.value) || 1;
+
+        await chrome.storage.local.set({
+            limite: limite,
+            progresso: { atual: 0, total: limite } // 🔴 reset persistente
+        });
+    });
+
+    radios.forEach(r => {
+        r.addEventListener("change", async () => {
+            if (r.checked) {
+                await chrome.storage.local.set({
+                    filtro: r.value
+                });
+            }
+        });
+    });
+
+    conectadosCheckbox.addEventListener("change", async () => {
+        await chrome.storage.local.set({
+            conectados: conectadosCheckbox.checked
+        });
+    });
+
+    // ==========================
+    // UI
+    // ==========================
+
+    function atualizarProgresso(p) {
+        progressoDiv.textContent = `Contagem: ${p.atual}/${p.total}`;
+    }
+
+    function atualizarUI() {
+
+        botao.textContent = executando ? "Cancelar" : "Executar";
+
+        palavrasInput.disabled = executando;
+        quantidadeInput.disabled = executando;
+        conectadosCheckbox.disabled = executando;
+
+        radios.forEach(r => {
+            r.disabled = executando;
+        });
+    }
+
+    // ==========================
+    // BOTÃO EXECUTAR
+    // ==========================
+
     botao.addEventListener("click", async () => {
 
         const [tab] = await chrome.tabs.query({
@@ -55,17 +123,15 @@ document.addEventListener("DOMContentLoaded", async () => {
                 acao: "iniciar",
                 palavras: palavras,
                 filtro: filtro,
-                limite: limite
+                limite: limite,
+                ignorarConectados: conectadosCheckbox.checked // 🔴 pronto pra usar no content.js
             });
 
             executando = true;
 
-            // 🔴 SALVA CONFIG
             await chrome.storage.local.set({
                 executando: true,
-                palavras: palavrasInput.value,
-                filtro: filtro,
-                limite: limite
+                progresso: { atual: 0, total: limite }
             });
 
         } else {
@@ -81,44 +147,43 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
 
     // ==========================
-    // SINCRONIZAÇÃO GLOBAL
+    // STORAGE SYNC
     // ==========================
+
     chrome.storage.onChanged.addListener((changes) => {
 
         if (changes.executando) {
             executando = changes.executando.newValue;
             atualizarUI();
 
-            // 🔴 FECHAR POPUP AUTOMATICAMENTE
             if (executando === false) {
                 window.close();
             }
         }
 
-        if (changes.palavras) palavrasInput.value = changes.palavras.newValue || "";
-        if (changes.limite) quantidadeInput.value = changes.limite.newValue || 1;
+        if (changes.progresso) {
+            atualizarProgresso(changes.progresso.newValue);
+        }
+
+        if (changes.limite) {
+            quantidadeInput.value = changes.limite.newValue || 1;
+        }
+
+        if (changes.palavras) {
+            palavrasInput.value = changes.palavras.newValue || "";
+        }
 
         if (changes.filtro) {
             radios.forEach(r => {
                 r.checked = r.value === changes.filtro.newValue;
             });
         }
+
+        if (changes.conectados) {
+            conectadosCheckbox.checked = changes.conectados.newValue;
+        }
     });
 
-    // ==========================
-    // TRAVAR / DESTRAVAR UI
-    // ==========================
-    function atualizarUI() {
-
-        botao.textContent = executando ? "Cancelar" : "Executar";
-
-        // 🔴 trava inputs durante execução
-        palavrasInput.disabled = executando;
-        quantidadeInput.disabled = executando;
-
-        radios.forEach(r => {
-            r.disabled = executando;
-        });
-    }
+    atualizarUI();
 
 });
